@@ -93,7 +93,7 @@ const parts={};
 function reg(id,obj){(parts[id]=parts[id]||new T.Group()).add(obj);if(!parts[id].parent)det.add(parts[id]);}
 const RAD=Math.PI/180, NS=6, ALPHA=40*RAD, HW=27*RAD;   // sector inclination; sector half-width (gaps between)
 
-function pbr(color,op,metal){return new T.MeshStandardMaterial({color,metalness:metal,roughness:0.4,transparent:op<1,opacity:op,side:T.DoubleSide,depthWrite:op>0.75,emissive:color,emissiveIntensity:0.13,envMapIntensity:0.5});}
+function pbr(color,op,metal){return new T.MeshStandardMaterial({color,metalness:metal,roughness:0.4,transparent:op<1,opacity:op,side:T.DoubleSide,depthWrite:op>0.75,emissive:color,emissiveIntensity:0.22,envMapIntensity:0.45});}
 
 // flat trapezoid: wide edge (Wout) outer/-y, narrow (Win) inner/+y
 function trap(Win,Wout,H){const s=new T.Shape();s.moveTo(-Wout/2,-H/2);s.lineTo(Wout/2,-H/2);s.lineTo(Win/2,H/2);s.lineTo(-Win/2,H/2);s.closePath();return s;}
@@ -110,8 +110,8 @@ function place(mesh,phi,zc){const ca=Math.cos(ALPHA),sa=Math.sin(ALPHA);
 function station(id,zc,H,color,op,depth){
   const Rc=zc*Math.tan(ALPHA), rIn=Math.max(0.03,Rc-H/2), rOut=Rc+H/2;
   const Win=2*rIn*Math.tan(HW), Wout=2*rOut*Math.tan(HW);
-  const mat=pbr(color,op,0.3);
-  const edgeMat=new T.LineBasicMaterial({color,transparent:true,opacity:0.6});
+  const mat=pbr(color,op,0.15);
+  const edgeMat=new T.LineBasicMaterial({color,transparent:true,opacity:0.9});
   for(let k=0;k<NS;k++){
     const geo=depth?new T.ExtrudeGeometry(trap(Win,Wout,H),{depth,bevelEnabled:false}):new T.ShapeGeometry(trap(Win,Wout,H));
     const mesh=new T.Mesh(geo,mat);place(mesh,k*60*RAD,zc);reg(id,mesh);
@@ -126,29 +126,29 @@ const beam=new T.Mesh(new T.CylinderGeometry(0.01,0.01,3.6,20),metalW);beam.rota
 const tgt=new T.Mesh(new T.SphereGeometry(0.035,24,24),new T.MeshStandardMaterial({color:0xd8b24a,metalness:0.6,roughness:0.3,emissive:0x3a2c08,envMapIntensity:1}));reg('beam',tgt);
 [-0.75,0.75].forEach(z=>{const d=new T.Mesh(new T.OctahedronGeometry(0.045),new T.MeshStandardMaterial({color:0xcdd3da,metalness:0.4,roughness:0.4}));d.position.z=z;d.scale.z=0.5;reg('beam',d);});
 
-// RICH: compact radiator vessel near target + round photon detector upstream (mirror R=872 mm)
-const richMat=pbr(0x6fb0c0,0.2,0.15);
-const rich=new T.Mesh(new T.CylinderGeometry(0.34,0.05,0.5,48,1,true),richMat);rich.rotation.x=Math.PI/2;rich.position.z=0.27;reg('rich',rich);
-const pd=new T.Mesh(new T.CylinderGeometry(0.40,0.40,0.07,48),pbr(0x7fb6c6,0.5,0.45));pd.rotation.x=Math.PI/2;pd.position.z=-0.34;reg('rich',pd);
+// RICH: large radiator/mirror vessel wrapped around the target (the big oval in the cross-section)
+const richMat=pbr(0x4fcde6,0.17,0.1);
+const vessel=new T.Mesh(new T.SphereGeometry(0.52,40,28),richMat);vessel.scale.set(1,1,1.3);vessel.position.z=0.44;reg('rich',vessel);
+const vedge=new T.LineSegments(new T.EdgesGeometry(new T.SphereGeometry(0.52,20,11)),new T.LineBasicMaterial({color:0x8fe6f4,transparent:true,opacity:0.5}));vedge.scale.set(1,1,1.3);vedge.position.z=0.44;reg('rich',vedge);
 
-// MDC I-IV (real radial module heights 0.80 -> 2.30 m; green -> teal)
-station('mdc1',0.55,0.80,0x5fbf6e,0.4);
-station('mdc2',0.85,1.15,0x4fba95,0.4);
-station('mdc3',1.45,1.85,0x45b0b0,0.4);
-station('mdc4',1.80,2.30,0x4aa3cc,0.4);
+// MDC — two close pairs: I/II before the magnet, III/IV after it (vivid green -> blue)
+station('mdc1',1.05,0.82,0x45d368,0.58);
+station('mdc2',1.22,1.02,0x1fc6b0,0.58);
+station('mdc3',1.70,1.80,0x24a8de,0.58);
+station('mdc4',1.88,2.14,0x4a86ec,0.58);
 
 // toroidal magnet: 6 coils in the gaps (phi=30+k*60), between MDC II and III, support ring R=1.78 m
 const coilMat=pbr(0x5a66b8,0.72,0.55);
 for(let k=0;k<NS;k++){const phi=(k*60+30)*RAD;
-  const sh=new T.Shape();sh.moveTo(0.33,0.98);sh.lineTo(1.78,1.26);sh.lineTo(1.78,1.42);sh.lineTo(0.33,1.40);sh.closePath();
+  const sh=new T.Shape();sh.moveTo(0.33,1.32);sh.lineTo(1.78,1.44);sh.lineTo(1.78,1.60);sh.lineTo(0.33,1.58);sh.closePath();
   const mesh=new T.Mesh(new T.ExtrudeGeometry(sh,{depth:0.05,bevelEnabled:false}),coilMat);mesh.rotation.x=Math.PI/2;
   const grp=new T.Group();grp.add(mesh);grp.rotation.z=phi;reg('mag',grp);}
 // toroid support ring encircling the beam (support ring Ø 3.56 m)
 const ring=new T.Mesh(new T.TorusGeometry(1.78,0.17,16,64),new T.MeshStandardMaterial({color:0x969ca4,metalness:0.6,roughness:0.42,envMapIntensity:0.7}));
-ring.position.z=1.2;reg('mag',ring);
+ring.position.z=1.46;reg('mag',ring);
 
 // TOF / RPC (META) wall at ~2.1 m
-station('meta',2.12,2.5,0xd08a3e,0.56,0.12);
+station('meta',2.12,2.5,0xe0923e,0.48,0.12);
 
 // schematic support structure + a ~1.8 m person for scale
 const steel=new T.MeshStandardMaterial({color:0xb7bec6,metalness:0.5,roughness:0.5,envMapIntensity:0.6});
@@ -169,8 +169,8 @@ const phead=new T.Mesh(new T.SphereGeometry(0.16,14,14),skin);phead.position.set
   p.rotation.x=-Math.PI/2;p.position.set(0,-2.1,1.1);scene.add(p);})();
 
 // ---- orbit ----
-const look=new T.Vector3(0,0,1.0);
-let az=0.5,pol=1.2,dist=10.4,auto=true;
+const look=new T.Vector3(0,0,0.95);
+let az=0.5,pol=1.18,dist=9.0,auto=true;
 function cam(){const sp=Math.sin(pol),cp=Math.cos(pol);
   camera.position.set(look.x+dist*sp*Math.sin(az),look.y+dist*cp,look.z+dist*sp*Math.cos(az));camera.lookAt(look);}
 let drag=false,px=0,py=0;
@@ -208,7 +208,7 @@ btnRotate.onclick=()=>{auto=!auto;setB(btnRotate,auto);};
 btnBeam.onclick=()=>{az=0;pol=Math.PI/2;dist=7.6;auto=false;setB(btnRotate,false);};
 const allMats=[];det.traverse(o=>{if(o.material&&o.material.transparent&&allMats.indexOf(o.material)<0)allMats.push(o.material);});
 let ghost=false;btnGhost.onclick=()=>{ghost=!ghost;setB(btnGhost,ghost);allMats.forEach(m=>{m.userData.b=m.userData.b??m.opacity;m.opacity=ghost?Math.min(m.userData.b,m.userData.b*0.4+0.02):m.userData.b;});};
-btnReset.onclick=()=>{az=0.5;pol=1.2;dist=10.4;auto=true;setB(btnRotate,true);};
+btnReset.onclick=()=>{az=0.5;pol=1.18;dist=9.0;auto=true;setB(btnRotate,true);};
 
 let hintT=setTimeout(hideHint,4500);function hideHint(){const h=document.getElementById('hint');if(h)h.style.opacity=0;clearTimeout(hintT);}
 function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
