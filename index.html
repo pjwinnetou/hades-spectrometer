@@ -91,9 +91,9 @@ const rim=new T.DirectionalLight(0x9db7d6,0.55);rim.position.set(-9,-3,-7);scene
 const det=new T.Group();scene.add(det);   // scene units = metres, beam = +z, target at origin
 const parts={};
 function reg(id,obj){(parts[id]=parts[id]||new T.Group()).add(obj);if(!parts[id].parent)det.add(parts[id]);}
-const RAD=Math.PI/180, NS=6, ALPHA=40*RAD;   // sector mean inclination from beam
+const RAD=Math.PI/180, NS=6, ALPHA=40*RAD, HW=27*RAD;   // sector inclination; sector half-width (gaps between)
 
-function pbr(color,op,metal){return new T.MeshStandardMaterial({color,metalness:metal,roughness:0.42,transparent:op<1,opacity:op,side:T.DoubleSide,depthWrite:op>0.75,envMapIntensity:0.9});}
+function pbr(color,op,metal){return new T.MeshStandardMaterial({color,metalness:metal,roughness:0.4,transparent:op<1,opacity:op,side:T.DoubleSide,depthWrite:op>0.75,emissive:color,emissiveIntensity:0.07,envMapIntensity:0.5});}
 
 // flat trapezoid: wide edge (Wout) outer/-y, narrow (Win) inner/+y
 function trap(Win,Wout,H){const s=new T.Shape();s.moveTo(-Wout/2,-H/2);s.lineTo(Wout/2,-H/2);s.lineTo(Win/2,H/2);s.lineTo(-Win/2,H/2);s.closePath();return s;}
@@ -105,8 +105,12 @@ function place(mesh,phi,zc){const ca=Math.cos(ALPHA),sa=Math.sin(ALPHA);
   const D=zc/ca,pos=n.clone().multiplyScalar(D);
   const m=new T.Matrix4().makeBasis(t,r,n);m.setPosition(pos);mesh.applyMatrix4(m);}
 
-function station(id,zc,Win,Wout,H,color,op,depth){
-  const mat=pbr(color,op,0.35);
+// each sector panel is a 60-deg wedge (with gaps): radial extent H centred at R_c = zc*tan(ALPHA);
+// widths follow the sector half-angle HW, which reproduces the real module widths.
+function station(id,zc,H,color,op,depth){
+  const Rc=zc*Math.tan(ALPHA), rIn=Math.max(0.03,Rc-H/2), rOut=Rc+H/2;
+  const Win=2*rIn*Math.tan(HW), Wout=2*rOut*Math.tan(HW);
+  const mat=pbr(color,op,0.3);
   for(let k=0;k<NS;k++){
     const geo=depth?new T.ExtrudeGeometry(trap(Win,Wout,H),{depth,bevelEnabled:false}):new T.ShapeGeometry(trap(Win,Wout,H));
     const mesh=new T.Mesh(geo,mat);place(mesh,k*60*RAD,zc);reg(id,mesh);
@@ -126,21 +130,21 @@ const rich=new T.Mesh(new T.CylinderGeometry(0.62,0.06,0.58,56,1,true),richMat);
 const mirror=new T.Mesh(new T.SphereGeometry(0.75,48,24,0,Math.PI*2,0,0.62),pbr(0x89b7c4,0.3,0.7));
 mirror.rotation.x=-Math.PI/2;mirror.position.z=0.66;reg('rich',mirror);
 
-// MDC I-IV (module sizes 0.88x0.80 -> 2.80x2.30 m; green -> teal)
-station('mdc1',0.60,0.55,0.88,0.80,0x6fae79,0.5);
-station('mdc2',0.92,0.80,1.30,1.15,0x66a98a,0.5);
-station('mdc3',1.46,1.45,2.20,1.85,0x5fa2a2,0.5);
-station('mdc4',1.82,1.85,2.80,2.30,0x589aac,0.5);
+// MDC I-IV (real radial module heights 0.80 -> 2.30 m; green -> teal)
+station('mdc1',0.55,0.80,0x5fbf6e,0.55);
+station('mdc2',0.85,1.15,0x4fba95,0.55);
+station('mdc3',1.45,1.85,0x45b0b0,0.55);
+station('mdc4',1.80,2.30,0x4aa3cc,0.55);
 
 // toroidal magnet: 6 coils in the gaps (phi=30+k*60), between MDC II and III, support ring R=1.78 m
-const coilMat=pbr(0x55639a,0.72,0.6);
+const coilMat=pbr(0x5a66b8,0.72,0.55);
 for(let k=0;k<NS;k++){const phi=(k*60+30)*RAD;
   const sh=new T.Shape();sh.moveTo(0.33,0.98);sh.lineTo(1.78,1.26);sh.lineTo(1.78,1.42);sh.lineTo(0.33,1.40);sh.closePath();
   const mesh=new T.Mesh(new T.ExtrudeGeometry(sh,{depth:0.05,bevelEnabled:false}),coilMat);mesh.rotation.x=Math.PI/2;
   const grp=new T.Group();grp.add(mesh);grp.rotation.z=phi;reg('mag',grp);}
 
 // TOF / RPC (META) wall at ~2.1 m
-station('meta',2.12,2.0,3.0,2.5,0xc0894a,0.6,0.12);
+station('meta',2.12,2.5,0xd08a3e,0.64,0.12);
 
 // contact shadow
 (function(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
