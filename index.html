@@ -126,10 +126,10 @@ const beam=new T.Mesh(new T.CylinderGeometry(0.01,0.01,3.6,20),metalW);beam.rota
 const tgt=new T.Mesh(new T.SphereGeometry(0.035,24,24),new T.MeshStandardMaterial({color:0xd8b24a,metalness:0.6,roughness:0.3,emissive:0x3a2c08,envMapIntensity:1}));reg('beam',tgt);
 [-0.75,0.75].forEach(z=>{const d=new T.Mesh(new T.OctahedronGeometry(0.045),new T.MeshStandardMaterial({color:0xcdd3da,metalness:0.4,roughness:0.4}));d.position.z=z;d.scale.z=0.5;reg('beam',d);});
 
-// RICH: large radiator/mirror vessel wrapped around the target (the big oval in the cross-section)
-const richMat=pbr(0x4fcde6,0.17,0.1);
-const vessel=new T.Mesh(new T.SphereGeometry(0.52,40,28),richMat);vessel.scale.set(1,1,1.3);vessel.position.z=0.44;reg('rich',vessel);
-const vedge=new T.LineSegments(new T.EdgesGeometry(new T.SphereGeometry(0.52,20,11)),new T.LineBasicMaterial({color:0x8fe6f4,transparent:true,opacity:0.5}));vedge.scale.set(1,1,1.3);vedge.position.z=0.44;reg('rich',vedge);
+// RICH: conical gas radiator opening downstream + concave spherical mirror behind the target
+const richMat=pbr(0x4fcde6,0.16,0.1);
+const radiator=new T.Mesh(new T.CylinderGeometry(0.56,0.07,0.78,48,1,true),richMat);radiator.rotation.x=Math.PI/2;radiator.position.z=0.44;reg('rich',radiator);
+const mirror=new T.Mesh(new T.SphereGeometry(0.5,44,22,0,Math.PI*2,0,0.95),pbr(0x9bd9e9,0.42,0.75));mirror.rotation.x=-Math.PI/2;mirror.position.z=0.03;reg('rich',mirror);
 
 // MDC — two close pairs: I/II before the magnet, III/IV after it (vivid green -> blue)
 station('mdc1',1.05,0.82,0x45d368,0.58);
