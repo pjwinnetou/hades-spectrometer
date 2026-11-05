@@ -84,8 +84,8 @@ const camera=new T.PerspectiveCamera(42,1,0.1,200);
   const tex=new T.CanvasTexture(c);tex.mapping=T.EquirectangularReflectionMapping;
   const p=new T.PMREMGenerator(renderer);p.compileEquirectangularShader();scene.environment=p.fromEquirectangular(tex).texture;tex.dispose();p.dispose();})();
 
-scene.add(new T.HemisphereLight(0xaebfd0,0x0c1016,0.55));
-const key=new T.DirectionalLight(0xffffff,1.0);key.position.set(7,9,8);scene.add(key);
+scene.add(new T.HemisphereLight(0xaebfd0,0x0c1016,0.62));
+const key=new T.DirectionalLight(0xffffff,0.72);key.position.set(7,9,8);scene.add(key);
 const rim=new T.DirectionalLight(0x9db7d6,0.55);rim.position.set(-9,-3,-7);scene.add(rim);
 
 const det=new T.Group();scene.add(det);   // scene units = metres, beam = +z, target at origin
@@ -93,7 +93,7 @@ const parts={};
 function reg(id,obj){(parts[id]=parts[id]||new T.Group()).add(obj);if(!parts[id].parent)det.add(parts[id]);}
 const RAD=Math.PI/180, NS=6, ALPHA=40*RAD, HW=27*RAD;   // sector inclination; sector half-width (gaps between)
 
-function pbr(color,op,metal){return new T.MeshStandardMaterial({color,metalness:metal,roughness:0.4,transparent:op<1,opacity:op,side:T.DoubleSide,depthWrite:op>0.75,emissive:color,emissiveIntensity:0.07,envMapIntensity:0.5});}
+function pbr(color,op,metal){return new T.MeshStandardMaterial({color,metalness:metal,roughness:0.4,transparent:op<1,opacity:op,side:T.DoubleSide,depthWrite:op>0.75,emissive:color,emissiveIntensity:0.13,envMapIntensity:0.5});}
 
 // flat trapezoid: wide edge (Wout) outer/-y, narrow (Win) inner/+y
 function trap(Win,Wout,H){const s=new T.Shape();s.moveTo(-Wout/2,-H/2);s.lineTo(Wout/2,-H/2);s.lineTo(Win/2,H/2);s.lineTo(-Win/2,H/2);s.closePath();return s;}
@@ -144,7 +144,7 @@ for(let k=0;k<NS;k++){const phi=(k*60+30)*RAD;
   const grp=new T.Group();grp.add(mesh);grp.rotation.z=phi;reg('mag',grp);}
 
 // TOF / RPC (META) wall at ~2.1 m
-station('meta',2.12,2.5,0xd08a3e,0.64,0.12);
+station('meta',2.12,2.5,0xd08a3e,0.56,0.12);
 
 // contact shadow
 (function(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
@@ -155,7 +155,7 @@ station('meta',2.12,2.5,0xd08a3e,0.64,0.12);
 
 // ---- orbit ----
 const look=new T.Vector3(0,0,1.0);
-let az=0.8,pol=1.12,dist=9.6,auto=true;
+let az=0.5,pol=1.2,dist=9.2,auto=true;
 function cam(){const sp=Math.sin(pol),cp=Math.cos(pol);
   camera.position.set(look.x+dist*sp*Math.sin(az),look.y+dist*cp,look.z+dist*sp*Math.cos(az));camera.lookAt(look);}
 let drag=false,px=0,py=0;
@@ -192,7 +192,7 @@ btnRotate.onclick=()=>{auto=!auto;setB(btnRotate,auto);};
 btnBeam.onclick=()=>{az=0;pol=Math.PI/2;dist=7.6;auto=false;setB(btnRotate,false);};
 const allMats=[];det.traverse(o=>{if(o.material&&o.material.transparent&&allMats.indexOf(o.material)<0)allMats.push(o.material);});
 let ghost=false;btnGhost.onclick=()=>{ghost=!ghost;setB(btnGhost,ghost);allMats.forEach(m=>{m.userData.b=m.userData.b??m.opacity;m.opacity=ghost?Math.min(m.userData.b,m.userData.b*0.4+0.02):m.userData.b;});};
-btnReset.onclick=()=>{az=0.8;pol=1.12;dist=9.6;auto=true;setB(btnRotate,true);};
+btnReset.onclick=()=>{az=0.5;pol=1.2;dist=9.2;auto=true;setB(btnRotate,true);};
 
 let hintT=setTimeout(hideHint,4500);function hideHint(){const h=document.getElementById('hint');if(h)h.style.opacity=0;clearTimeout(hintT);}
 function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
