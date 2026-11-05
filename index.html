@@ -1,0 +1,249 @@
+<title>Barrel Detector</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Committed dark "engineering render" world; UI chrome from tokens. Layout: full-bleed canvas + floating glass panels. */
+  :root{
+    --bg:#0a0d12; --bg2:#121820;
+    --panel:rgba(18,24,32,.72); --panel-brd:rgba(255,255,255,.10);
+    --fg:#e8edf4; --muted:#9fb0c3; --accent:#5ad1ff;
+    color-scheme:dark;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Inter",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;font-family:var(--sans);color:var(--fg);
+    background:radial-gradient(130% 120% at 50% 28%,var(--bg2),var(--bg) 70%);
+    overflow:hidden;
+  }
+  #stage{position:fixed;inset:0}
+  canvas{display:block;touch-action:none}
+
+  .panel{
+    position:fixed;z-index:5;background:var(--panel);
+    border:1px solid var(--panel-brd);border-radius:14px;
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    box-shadow:0 12px 40px rgba(0,0,0,.45);
+  }
+
+  /* title */
+  #title{top:max(16px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));padding:14px 18px;max-width:min(78vw,360px)}
+  #title h1{margin:0;font-size:18px;letter-spacing:.3px;font-weight:650;display:flex;align-items:center;gap:9px}
+  #title .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+  #title p{margin:6px 0 0;font-size:12px;line-height:1.5;color:var(--muted)}
+
+  /* legend */
+  #legend{top:max(16px,env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));padding:12px;width:230px;max-height:70vh;overflow:auto}
+  #legend h2{margin:2px 4px 10px;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;cursor:pointer;user-select:none;transition:background .15s,opacity .15s}
+  .row:hover{background:rgba(255,255,255,.06)}
+  .row.off{opacity:.38}
+  .sw{width:14px;height:14px;border-radius:4px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+  .row .nm{font-size:12.5px;font-weight:550;line-height:1.15}
+  .row .sub{font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+  .row .txt{min-width:0}
+
+  /* controls */
+  #controls{left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom,0px));padding:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:94vw}
+  button{
+    font-family:var(--sans);font-size:12.5px;font-weight:550;color:var(--fg);
+    background:rgba(255,255,255,.06);border:1px solid var(--panel-brd);
+    padding:9px 14px;border-radius:10px;cursor:pointer;transition:background .15s,border-color .15s;
+  }
+  button:hover{background:rgba(255,255,255,.12)}
+  button.active{background:color-mix(in srgb,var(--accent) 24%,transparent);border-color:var(--accent);color:#eaffff}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  #hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(max(16px,env(safe-area-inset-bottom,0px)) + 62px);
+    z-index:4;font-size:11px;color:var(--muted);font-family:var(--mono);opacity:.8;pointer-events:none;transition:opacity .6s}
+  @media (max-width:560px){#title p{display:none}#legend{width:200px}}
+</style>
+
+<div id="stage"></div>
+
+<div class="panel" id="title">
+  <h1><span class="dot"></span>Barrel Detector</h1>
+  <p>Ghosted cutaway of a solenoidal collider detector — nested tracking, calorimetry and the magnet yoke around the beam axis. Drag to orbit · scroll to zoom.</p>
+</div>
+
+<div class="panel" id="legend"><h2>Subsystems · click to toggle</h2></div>
+
+<div class="panel" id="controls">
+  <button id="btnRotate" class="active">Auto-rotate</button>
+  <button id="btnCutaway">Cutaway outer</button>
+  <button id="btnGhost">Ghost mode</button>
+  <button id="btnReset">Reset view</button>
+</div>
+<div id="hint">drag · scroll · pinch</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const THREEr = window.THREE;
+const stage = document.getElementById('stage');
+
+const scene = new THREEr.Scene();
+scene.fog = new THREEr.FogExp2(0x0a0d12, 0.035);
+
+const camera = new THREEr.PerspectiveCamera(42, 1, 0.1, 200);
+const renderer = new THREEr.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputEncoding = THREEr.sRGBEncoding;
+stage.appendChild(renderer.domElement);
+
+// ---- lighting ----
+scene.add(new THREEr.HemisphereLight(0xbcd6ff, 0x16202c, 0.85));
+const key = new THREEr.DirectionalLight(0xffffff, 1.15); key.position.set(6,8,10); scene.add(key);
+const rim = new THREEr.DirectionalLight(0x6fb4ff, 0.7); rim.position.set(-8,-4,-6); scene.add(rim);
+const fill = new THREEr.PointLight(0xff7bd0, 0.5, 40); fill.position.set(0,0,0); scene.add(fill);
+
+// ---- detector group (beam axis -> world Z) ----
+const det = new THREEr.Group();
+det.rotation.x = Math.PI/2;      // local Y (cylinder axis) -> world Z
+scene.add(det);
+
+// subsystem definitions: inner R, outer R, half-length (z), color, opacity
+const SUBS = [
+  {id:'pipe', name:'Beam pipe',       spec:'r≈2 cm',        ri:0.00, ro:0.028, hz:3.5,  color:0xd7dde6, op:1.00, solid:true},
+  {id:'mvtx', name:'Vertex tracker',  spec:'MVTX · Si',     ri:0.03, ro:0.055, hz:0.14, color:0xd6e34a, op:0.95},
+  {id:'intt', name:'Inner tracker',   spec:'INTT · Si',     ri:0.065,ro:0.11,  hz:0.24, color:0x47d16a, op:0.95},
+  {id:'tpc',  name:'Time projection', spec:'TPC · gas',     ri:0.21, ro:0.78,  hz:1.05, color:0xff5fb6, op:0.34, face:true, radial:true},
+  {id:'emc',  name:'EM calorimeter',  spec:'EMCal',         ri:0.90, ro:1.16,  hz:1.28, color:0x37c7d4, op:0.55, face:true},
+  {id:'ihc',  name:'Inner hadronic',  spec:'iHCal',         ri:1.18, ro:1.36,  hz:1.30, color:0x3f7fd1, op:0.60, face:true},
+  {id:'mag',  name:'Solenoid magnet', spec:'1.4 T',         ri:1.40, ro:1.60,  hz:1.42, color:0x2746a0, op:0.40},
+  {id:'ohc',  name:'Outer / flux yoke',spec:'oHCal',        ri:1.66, ro:2.55,  hz:1.52, color:0x8794a3, op:0.22, outer:true, face:true},
+];
+
+const parts = {};   // id -> {group, mats:[], face:bool, outer:bool}
+
+function shellMat(color, op){
+  return new THREEr.MeshStandardMaterial({
+    color, metalness:0.35, roughness:0.5, transparent:true, opacity:op,
+    side:THREEr.DoubleSide, depthWrite: op>0.7, emissive:color, emissiveIntensity:0.08
+  });
+}
+
+SUBS.forEach((s,i)=>{
+  const g = new THREEr.Group();
+  const mats = [];
+
+  if(s.solid){
+    const m = new THREEr.MeshStandardMaterial({color:s.color, metalness:0.85, roughness:0.28});
+    const pipe = new THREEr.Mesh(new THREEr.CylinderGeometry(s.ro,s.ro,s.hz*2,32), m);
+    g.add(pipe); mats.push(m);
+  } else {
+    // outer wall
+    const mo = shellMat(s.color, s.op);
+    const wall = new THREEr.Mesh(new THREEr.CylinderGeometry(s.ro,s.ro,s.hz*2,80,1,true), mo);
+    g.add(wall); mats.push(mo);
+    // inner wall (slightly dimmer)
+    const mi = shellMat(s.color, Math.min(1,s.op+0.12));
+    const inner = new THREEr.Mesh(new THREEr.CylinderGeometry(s.ri,s.ri,s.hz*2,80,1,true), mi);
+    g.add(inner); mats.push(mi);
+    // coloured end faces (the concentric rings seen head-on)
+    if(s.face){
+      const fm = shellMat(s.color, Math.min(1,s.op+0.45));
+      [s.hz,-s.hz].forEach(z=>{
+        const ring = new THREEr.Mesh(new THREEr.RingGeometry(s.ri,s.ro,80), fm);
+        ring.rotation.x = -Math.PI/2; ring.position.y = z; g.add(ring);
+      });
+      mats.push(fm);
+    }
+    // radial readout spokes on the face (TPC flourish)
+    if(s.radial){
+      const pts=[]; const N=60;
+      for(let k=0;k<N;k++){const a=k/N*Math.PI*2;
+        pts.push(s.ri*Math.sin(a),0,s.ri*Math.cos(a), s.ro*Math.sin(a),0,s.ro*Math.cos(a));}
+      const lg=new THREEr.BufferGeometry();
+      lg.setAttribute('position',new THREEr.Float32BufferAttribute(pts,3));
+      const lm=new THREEr.LineBasicMaterial({color:s.color,transparent:true,opacity:0.5});
+      [s.hz,-s.hz].forEach(z=>{const ls=new THREEr.LineSegments(lg,lm);ls.position.y=z;g.add(ls);});
+      mats.push(lm);
+    }
+  }
+  det.add(g);
+  parts[s.id]={group:g, mats, baseOp:mats.map(m=>m.opacity), outer:!!s.outer, face:!!s.face};
+});
+
+// forward/backward endcap "fans" (like the yellow plugs)
+const endMat = new THREEr.MeshStandardMaterial({color:0xe0c53a, metalness:0.3, roughness:0.5,
+  transparent:true, opacity:0.5, side:THREEr.DoubleSide, emissive:0xe0c53a, emissiveIntensity:0.1});
+[1.62,-1.62].forEach(z=>{
+  const disk=new THREEr.Mesh(new THREEr.RingGeometry(0.12,0.85,48), endMat);
+  disk.rotation.x=-Math.PI/2; disk.position.y=z; det.add(disk);
+});
+parts['endcap']={group:null, mats:[endMat], baseOp:[0.5]};
+
+// ---- orbit (custom, no deps) ----
+const tgt=new THREEr.Vector3(0,0,0);
+let az=0.9, pol=1.15, dist=8.4;
+function applyCam(){
+  const sp=Math.sin(pol), cp=Math.cos(pol);
+  camera.position.set(tgt.x+dist*sp*Math.sin(az), tgt.y+dist*cp, tgt.z+dist*sp*Math.cos(az));
+  camera.lookAt(tgt);
+}
+let drag=false,px=0,py=0,auto=true;
+function down(x,y){drag=true;px=x;py=y;auto=false;setBtn(btnRotate,false);hideHint();}
+function move(x,y){if(!drag)return;az-=(x-px)*0.006;pol=Math.max(0.15,Math.min(Math.PI-0.15,pol-(y-py)*0.006));px=x;py=y;}
+function up(){drag=false;}
+const el=renderer.domElement;
+el.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
+addEventListener('mousemove',e=>move(e.clientX,e.clientY));
+addEventListener('mouseup',up);
+el.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(3.2,Math.min(26,dist*(1+Math.sign(e.deltaY)*0.08)));hideHint();},{passive:false});
+let pinch=0;
+el.addEventListener('touchstart',e=>{if(e.touches.length===1)down(e.touches[0].clientX,e.touches[0].clientY);else if(e.touches.length===2)pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);},{passive:true});
+el.addEventListener('touchmove',e=>{
+  if(e.touches.length===1)move(e.touches[0].clientX,e.touches[0].clientY);
+  else if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinch)dist=Math.max(3.2,Math.min(26,dist*(pinch/d)));pinch=d;}
+},{passive:true});
+el.addEventListener('touchend',()=>{drag=false;pinch=0;});
+
+// ---- legend ----
+const legend=document.getElementById('legend');
+SUBS.forEach(s=>{
+  const row=document.createElement('div');row.className='row';row.dataset.id=s.id;
+  row.innerHTML=`<span class="sw" style="background:#${s.color.toString(16).padStart(6,'0')}"></span>
+    <span class="txt"><div class="nm">${s.name}</div><div class="sub">${s.spec}</div></span>`;
+  row.addEventListener('click',()=>toggle(s.id,row));
+  legend.appendChild(row);
+});
+const hidden=new Set();
+function toggle(id,row){
+  const p=parts[id];const on=hidden.has(id);
+  if(on){hidden.delete(id);row.classList.remove('off');} else {hidden.add(id);row.classList.add('off');}
+  p.group && (p.group.visible=!hidden.has(id));
+}
+
+// ---- buttons ----
+const btnRotate=document.getElementById('btnRotate');
+const btnCutaway=document.getElementById('btnCutaway');
+const btnGhost=document.getElementById('btnGhost');
+const btnReset=document.getElementById('btnReset');
+function setBtn(b,on){b.classList.toggle('active',on);}
+btnRotate.onclick=()=>{auto=!auto;setBtn(btnRotate,auto);};
+let cut=false;
+btnCutaway.onclick=()=>{cut=!cut;setBtn(btnCutaway,cut);
+  ['ohc','mag'].forEach(id=>{const p=parts[id];if(p.group)p.group.visible=cut?false:!hidden.has(id);});
+};
+let ghost=false;
+btnGhost.onclick=()=>{ghost=!ghost;setBtn(btnGhost,ghost);
+  Object.values(parts).forEach(p=>p.mats.forEach((m,i)=>{if(m.opacity!==undefined)m.opacity=ghost?Math.min(p.baseOp[i]*0.45,p.baseOp[i]):p.baseOp[i];}));
+};
+btnReset.onclick=()=>{az=0.9;pol=1.15;dist=8.4;auto=true;setBtn(btnRotate,true);};
+
+let hintT=setTimeout(hideHint,4500);
+function hideHint(){const h=document.getElementById('hint');if(h)h.style.opacity=0;clearTimeout(hintT);}
+
+// ---- resize + loop ----
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);resize();
+
+function tick(){
+  requestAnimationFrame(tick);
+  if(auto)az+=0.0016;
+  applyCam();
+  renderer.render(scene,camera);
+}
+tick();
+</script>
