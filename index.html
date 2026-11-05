@@ -140,7 +140,7 @@ for(let k=0;k<NS;k++){const phi=(k*60+30)*RAD;
   const grp=new T.Group();grp.add(mesh);grp.rotation.z=phi;reg('mag',grp);}
 
 // TOF / RPC (META) wall at ~2.1 m
-station('meta',2.12,2.0,3.0,2.5,0xc0894a,0.78,0.12);
+station('meta',2.12,2.0,3.0,2.5,0xc0894a,0.6,0.12);
 
 // contact shadow
 (function(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
@@ -150,8 +150,8 @@ station('meta',2.12,2.0,3.0,2.5,0xc0894a,0.78,0.12);
   p.rotation.x=-Math.PI/2;p.position.set(0,-2.1,1.1);scene.add(p);})();
 
 // ---- orbit ----
-const look=new T.Vector3(0,0,1.05);
-let az=0.85,pol=1.05,dist=6.6,auto=true;
+const look=new T.Vector3(0,0,1.0);
+let az=0.8,pol=1.12,dist=9.6,auto=true;
 function cam(){const sp=Math.sin(pol),cp=Math.cos(pol);
   camera.position.set(look.x+dist*sp*Math.sin(az),look.y+dist*cp,look.z+dist*sp*Math.cos(az));camera.lookAt(look);}
 let drag=false,px=0,py=0;
@@ -160,7 +160,7 @@ function mv(x,y){if(!drag)return;az-=(x-px)*0.006;pol=Math.max(0.1,Math.min(Math
 const el=renderer.domElement;
 el.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
 addEventListener('mousemove',e=>mv(e.clientX,e.clientY));addEventListener('mouseup',()=>drag=false);
-el.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(2.6,Math.min(20,dist*(1+Math.sign(e.deltaY)*0.08)));hideHint();},{passive:false});
+el.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(3,Math.min(26,dist*(1+Math.sign(e.deltaY)*0.08)));hideHint();},{passive:false});
 let pin=0;
 el.addEventListener('touchstart',e=>{if(e.touches.length===1)down(e.touches[0].clientX,e.touches[0].clientY);else if(e.touches.length===2)pin=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);},{passive:true});
 el.addEventListener('touchmove',e=>{if(e.touches.length===1)mv(e.touches[0].clientX,e.touches[0].clientY);
@@ -185,10 +185,10 @@ ITEMS.forEach(it=>{const row=document.createElement('div');row.className='row';
 const btnRotate=document.getElementById('btnRotate'),btnBeam=document.getElementById('btnBeam'),btnGhost=document.getElementById('btnGhost'),btnReset=document.getElementById('btnReset');
 function setB(b,on){b.classList.toggle('active',on);}
 btnRotate.onclick=()=>{auto=!auto;setB(btnRotate,auto);};
-btnBeam.onclick=()=>{az=0;pol=Math.PI/2;dist=5.4;auto=false;setB(btnRotate,false);};
+btnBeam.onclick=()=>{az=0;pol=Math.PI/2;dist=7.6;auto=false;setB(btnRotate,false);};
 const allMats=[];det.traverse(o=>{if(o.material&&o.material.transparent&&allMats.indexOf(o.material)<0)allMats.push(o.material);});
 let ghost=false;btnGhost.onclick=()=>{ghost=!ghost;setB(btnGhost,ghost);allMats.forEach(m=>{m.userData.b=m.userData.b??m.opacity;m.opacity=ghost?Math.min(m.userData.b,m.userData.b*0.4+0.02):m.userData.b;});};
-btnReset.onclick=()=>{az=0.85;pol=1.05;dist=6.6;auto=true;setB(btnRotate,true);};
+btnReset.onclick=()=>{az=0.8;pol=1.12;dist=9.6;auto=true;setB(btnRotate,true);};
 
 let hintT=setTimeout(hideHint,4500);function hideHint(){const h=document.getElementById('hint');if(h)h.style.opacity=0;clearTimeout(hintT);}
 function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
