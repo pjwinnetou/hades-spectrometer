@@ -1,7 +1,7 @@
 <title>HADES Spectrometer</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
-  /* Studio engineering-render of the HADES forward spectrometer; restrained UI. */
+  /* Studio engineering render of HADES, built to published dimensions. */
   :root{
     --bg:#0d1014; --fg:#e6e9ee; --muted:#8b96a3; --line:rgba(255,255,255,.08);
     --panel:rgba(16,19,24,.66); --accent:#9fb4c9;
@@ -14,17 +14,16 @@
   body{margin:0;font-family:var(--sans);color:var(--fg);background:var(--bg);overflow:hidden;-webkit-font-smoothing:antialiased}
   #stage{position:fixed;inset:0}
   canvas{display:block;touch-action:none}
-
   .panel{position:fixed;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:12px;
     backdrop-filter:blur(10px) saturate(1.1);-webkit-backdrop-filter:blur(10px) saturate(1.1)}
 
-  #title{top:max(18px,env(safe-area-inset-top,0px));left:max(18px,env(safe-area-inset-left,0px));padding:13px 16px;max-width:min(76vw,350px)}
+  #title{top:max(18px,env(safe-area-inset-top,0px));left:max(18px,env(safe-area-inset-left,0px));padding:13px 16px;max-width:min(78vw,360px)}
   #title h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.2px}
   #title .k{font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px}
   #title p{margin:7px 0 0;font-size:11.5px;line-height:1.55;color:var(--muted)}
   #title .credit{margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:10px;line-height:1.5;color:var(--muted);opacity:.85}
 
-  #legend{top:max(18px,env(safe-area-inset-top,0px));right:max(18px,env(safe-area-inset-right,0px));padding:10px;width:230px;max-height:72vh;overflow:auto}
+  #legend{top:max(18px,env(safe-area-inset-top,0px));right:max(18px,env(safe-area-inset-right,0px));padding:10px;width:244px;max-height:72vh;overflow:auto}
   #legend h2{margin:3px 5px 8px;font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:600}
   .row{display:flex;align-items:center;gap:10px;padding:6px 7px;border-radius:8px;cursor:pointer;user-select:none;transition:background .15s,opacity .15s}
   .row:hover{background:rgba(255,255,255,.05)}
@@ -43,7 +42,7 @@
 
   #hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(max(18px,env(safe-area-inset-bottom,0px)) + 58px);
     z-index:4;font-size:10.5px;color:var(--muted);font-family:var(--mono);opacity:.65;pointer-events:none;transition:opacity .7s}
-  @media (max-width:560px){#title p{display:none}#legend{width:198px}}
+  @media (max-width:560px){#title p{display:none}#legend{width:206px}}
 </style>
 
 <div id="stage"></div>
@@ -51,8 +50,8 @@
 <div class="panel" id="title">
   <div class="k">GSI / FAIR · fixed target</div>
   <h1>HADES Spectrometer</h1>
-  <p>The six-sector forward spectrometer: beam hits the target, then RICH, four MDC drift-chamber planes, the toroidal magnet and the TOF/RPC wall. Drag to orbit · scroll to zoom.</p>
-  <p class="credit">Stylized model by Jaebeom &amp; Claude, built from public HADES references (GSI). Not official HADES software or geometry.</p>
+  <p>The six-sector forward spectrometer, to scale (metres): target → RICH → MDC I/II → toroidal magnet → MDC III/IV → TOF/RPC wall. Polar acceptance 18°–85°. Drag to orbit · scroll to zoom.</p>
+  <p class="credit">Dimensions from the HADES technical paper (Eur. Phys. J. A 41, 243, 2009) and tracking paper (arXiv:physics/0404011): acceptance, RICH mirror (R=872&nbsp;mm), MDC module sizes (0.88×0.80 → 2.80×2.30&nbsp;m), 6 toroid coils, META ≈2.1&nbsp;m, START/VETO ∓75&nbsp;cm. Per-plane MDC z-positions are estimated (geometry file not public). Model by Jaebeom &amp; Claude — not official HADES geometry.</p>
 </div>
 
 <div class="panel" id="legend"><h2>Subsystems</h2></div>
@@ -71,11 +70,10 @@ const T=window.THREE;
 const stage=document.getElementById('stage');
 const renderer=new T.WebGLRenderer({antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.outputEncoding=T.sRGBEncoding;
-renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
+renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
 stage.appendChild(renderer.domElement);
 
-const scene=new T.Scene();scene.fog=new T.FogExp2(0x0d1014,0.022);
+const scene=new T.Scene();scene.fog=new T.FogExp2(0x0d1014,0.02);
 const camera=new T.PerspectiveCamera(42,1,0.1,200);
 
 // soft studio environment
@@ -90,113 +88,107 @@ scene.add(new T.HemisphereLight(0xaebfd0,0x0c1016,0.55));
 const key=new T.DirectionalLight(0xffffff,1.0);key.position.set(7,9,8);scene.add(key);
 const rim=new T.DirectionalLight(0x9db7d6,0.55);rim.position.set(-9,-3,-7);scene.add(rim);
 
-const det=new T.Group();scene.add(det);  // beam axis = world +z, target at origin
-const parts={};  // id -> group
-function reg(id,obj){ (parts[id]=parts[id]||new T.Group()).add(obj); if(!parts[id].parent)det.add(parts[id]); }
+const det=new T.Group();scene.add(det);   // scene units = metres, beam = +z, target at origin
+const parts={};
+function reg(id,obj){(parts[id]=parts[id]||new T.Group()).add(obj);if(!parts[id].parent)det.add(parts[id]);}
+const RAD=Math.PI/180, NS=6, ALPHA=40*RAD;   // sector mean inclination from beam
 
-const RAD=Math.PI/180, HW=26*RAD, NS=6;   // 6 sectors, half-width 26 deg
-
-function sectorShape(rIn,rOut,a0,a1){
-  const s=new T.Shape();
-  s.moveTo(rIn*Math.cos(a0),rIn*Math.sin(a0));
-  s.lineTo(rOut*Math.cos(a0),rOut*Math.sin(a0));
-  s.absarc(0,0,rOut,a0,a1,false);
-  s.lineTo(rIn*Math.cos(a1),rIn*Math.sin(a1));
-  s.absarc(0,0,rIn,a1,a0,true);
-  return s;
-}
 function pbr(color,op,metal){return new T.MeshStandardMaterial({color,metalness:metal,roughness:0.42,transparent:op<1,opacity:op,side:T.DoubleSide,depthWrite:op>0.75,envMapIntensity:0.9});}
 
-// --- station panels (flat chambers) in 6 sectors ---
-function station(id,z,rIn,rOut,color,op,metal,depth){
-  const m=pbr(color,op,metal??0.35);
+// flat trapezoid: wide edge (Wout) outer/-y, narrow (Win) inner/+y
+function trap(Win,Wout,H){const s=new T.Shape();s.moveTo(-Wout/2,-H/2);s.lineTo(Wout/2,-H/2);s.lineTo(Win/2,H/2);s.lineTo(-Win/2,H/2);s.closePath();return s;}
+// place a panel in sector phi at axial centre zc, inclined by ALPHA, facing the target
+function place(mesh,phi,zc){const ca=Math.cos(ALPHA),sa=Math.sin(ALPHA);
+  const n=new T.Vector3(sa*Math.cos(phi),sa*Math.sin(phi),ca);
+  const t=new T.Vector3(-Math.sin(phi),Math.cos(phi),0);
+  const r=new T.Vector3().crossVectors(n,t).normalize();
+  const D=zc/ca,pos=n.clone().multiplyScalar(D);
+  const m=new T.Matrix4().makeBasis(t,r,n);m.setPosition(pos);mesh.applyMatrix4(m);}
+
+function station(id,zc,Win,Wout,H,color,op,depth){
+  const mat=pbr(color,op,0.35);
   for(let k=0;k<NS;k++){
-    const c=k*60*RAD, sh=sectorShape(rIn,rOut,c-HW,c+HW);
-    let geo;
-    if(depth){geo=new T.ExtrudeGeometry(sh,{depth,bevelEnabled:false,curveSegments:24});}
-    else{geo=new T.ShapeGeometry(sh,24);}
-    const mesh=new T.Mesh(geo,m);mesh.position.z=z-(depth?depth/2:0);reg(id,mesh);
+    const geo=depth?new T.ExtrudeGeometry(trap(Win,Wout,H),{depth,bevelEnabled:false}):new T.ShapeGeometry(trap(Win,Wout,H));
+    const mesh=new T.Mesh(geo,mat);place(mesh,k*60*RAD,zc);reg(id,mesh);
   }
-  return m;
+  return mat;
 }
 
-// target + beam
-const beamMat=new T.MeshStandardMaterial({color:0xc9d0d8,metalness:0.9,roughness:0.25,envMapIntensity:1.1});
-const beam=new T.Mesh(new T.CylinderGeometry(0.012,0.012,4.9,20),beamMat);beam.rotation.x=Math.PI/2;beam.position.z=1.25;reg('beamline',beam);
-const tgt=new T.Mesh(new T.SphereGeometry(0.045,24,24),new T.MeshStandardMaterial({color:0xd8b24a,metalness:0.6,roughness:0.3,emissive:0x3a2c08,envMapIntensity:1}));reg('beamline',tgt);
+// beam line + target + START/VETO diamonds (∓0.75 m)
+const metalW=new T.MeshStandardMaterial({color:0xc9d0d8,metalness:0.9,roughness:0.25,envMapIntensity:1.1});
+const beam=new T.Mesh(new T.CylinderGeometry(0.01,0.01,3.6,20),metalW);beam.rotation.x=Math.PI/2;beam.position.z=0.6;reg('beam',beam);
+const tgt=new T.Mesh(new T.SphereGeometry(0.035,24,24),new T.MeshStandardMaterial({color:0xd8b24a,metalness:0.6,roughness:0.3,emissive:0x3a2c08,envMapIntensity:1}));reg('beam',tgt);
+[-0.75,0.75].forEach(z=>{const d=new T.Mesh(new T.OctahedronGeometry(0.045),new T.MeshStandardMaterial({color:0xcdd3da,metalness:0.4,roughness:0.4}));d.position.z=z;d.scale.z=0.5;reg('beam',d);});
 
-// RICH (Cherenkov radiator cone, near target)
-const richMat=pbr(0x6fb0c0,0.16,0.1);
-const rich=new T.Mesh(new T.CylinderGeometry(0.42,0.07,0.5,48,1,true),richMat);rich.rotation.x=Math.PI/2;rich.position.z=0.33;reg('rich',rich);
+// RICH radiator cone + mirror, near target (mirror R=872 mm, window Ø1500 mm)
+const richMat=pbr(0x6fb0c0,0.15,0.1);
+const rich=new T.Mesh(new T.CylinderGeometry(0.62,0.06,0.58,56,1,true),richMat);rich.rotation.x=Math.PI/2;rich.position.z=0.33;reg('rich',rich);
+const mirror=new T.Mesh(new T.SphereGeometry(0.75,48,24,0,Math.PI*2,0,0.62),pbr(0x89b7c4,0.3,0.7));
+mirror.rotation.x=-Math.PI/2;mirror.position.z=0.66;reg('rich',mirror);
 
-// MDC I–IV (green -> teal with depth)
-const mdc=[];
-mdc.push(station('mdc1',0.98,0.18,0.56,0x6fae79,0.5,0.35));
-mdc.push(station('mdc2',1.32,0.24,0.76,0x66a98a,0.5,0.35));
-mdc.push(station('mdc3',2.36,0.50,1.36,0x5fa2a2,0.5,0.35));
-mdc.push(station('mdc4',2.74,0.58,1.62,0x589aac,0.5,0.35));
+// MDC I-IV (module sizes 0.88x0.80 -> 2.80x2.30 m; green -> teal)
+station('mdc1',0.60,0.55,0.88,0.80,0x6fae79,0.5);
+station('mdc2',0.92,0.80,1.30,1.15,0x66a98a,0.5);
+station('mdc3',1.46,1.45,2.20,1.85,0x5fa2a2,0.5);
+station('mdc4',1.82,1.85,2.80,2.30,0x589aac,0.5);
 
-// toroidal magnet: 6 coils in the gaps between sectors
+// toroidal magnet: 6 coils in the gaps (phi=30+k*60), between MDC II and III, support ring R=1.78 m
 const coilMat=pbr(0x55639a,0.72,0.6);
-for(let k=0;k<NS;k++){
-  const phi=(k*60+30)*RAD;
-  const sh=new T.Shape();sh.moveTo(0.34,1.55);sh.lineTo(1.5,1.78);sh.lineTo(1.5,2.0);sh.lineTo(0.34,2.02);sh.closePath();
-  const geo=new T.ExtrudeGeometry(sh,{depth:0.05,bevelEnabled:false});
-  const mesh=new T.Mesh(geo,coilMat);mesh.rotation.x=Math.PI/2;
-  const grp=new T.Group();grp.add(mesh);grp.rotation.z=phi;reg('mag',grp);
-}
+for(let k=0;k<NS;k++){const phi=(k*60+30)*RAD;
+  const sh=new T.Shape();sh.moveTo(0.33,0.98);sh.lineTo(1.78,1.26);sh.lineTo(1.78,1.42);sh.lineTo(0.33,1.40);sh.closePath();
+  const mesh=new T.Mesh(new T.ExtrudeGeometry(sh,{depth:0.05,bevelEnabled:false}),coilMat);mesh.rotation.x=Math.PI/2;
+  const grp=new T.Group();grp.add(mesh);grp.rotation.z=phi;reg('mag',grp);}
 
-// TOF / RPC wall (thicker, outer)
-const tofMat=station('tof',3.28,0.66,2.05,0xc0894a,0.78,0.4,0.1);
+// TOF / RPC (META) wall at ~2.1 m
+station('meta',2.12,2.0,3.0,2.5,0xc0894a,0.78,0.12);
 
 // contact shadow
 (function(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
   const g=x.createRadialGradient(128,128,10,128,128,128);g.addColorStop(0,'rgba(0,0,0,.5)');g.addColorStop(1,'rgba(0,0,0,0)');
   x.fillStyle=g;x.fillRect(0,0,256,256);const t=new T.CanvasTexture(c);
   const p=new T.Mesh(new T.PlaneGeometry(7,8),new T.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));
-  p.rotation.x=-Math.PI/2;p.position.set(0,-2.3,1.6);scene.add(p);})();
+  p.rotation.x=-Math.PI/2;p.position.set(0,-2.1,1.1);scene.add(p);})();
 
 // ---- orbit ----
-const look=new T.Vector3(0,0,1.65);
-let az=0.85,pol=1.08,dist=7.4,auto=true;
+const look=new T.Vector3(0,0,1.05);
+let az=0.85,pol=1.05,dist=6.6,auto=true;
 function cam(){const sp=Math.sin(pol),cp=Math.cos(pol);
   camera.position.set(look.x+dist*sp*Math.sin(az),look.y+dist*cp,look.z+dist*sp*Math.cos(az));camera.lookAt(look);}
 let drag=false,px=0,py=0;
 function down(x,y){drag=true;px=x;py=y;auto=false;setB(btnRotate,false);hideHint();}
-function mv(x,y){if(!drag)return;az-=(x-px)*0.006;pol=Math.max(0.12,Math.min(Math.PI-0.12,pol-(y-py)*0.006));px=x;py=y;}
+function mv(x,y){if(!drag)return;az-=(x-px)*0.006;pol=Math.max(0.1,Math.min(Math.PI-0.1,pol-(y-py)*0.006));px=x;py=y;}
 const el=renderer.domElement;
 el.addEventListener('mousedown',e=>down(e.clientX,e.clientY));
 addEventListener('mousemove',e=>mv(e.clientX,e.clientY));addEventListener('mouseup',()=>drag=false);
-el.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(3,Math.min(22,dist*(1+Math.sign(e.deltaY)*0.08)));hideHint();},{passive:false});
+el.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(2.6,Math.min(20,dist*(1+Math.sign(e.deltaY)*0.08)));hideHint();},{passive:false});
 let pin=0;
 el.addEventListener('touchstart',e=>{if(e.touches.length===1)down(e.touches[0].clientX,e.touches[0].clientY);else if(e.touches.length===2)pin=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);},{passive:true});
 el.addEventListener('touchmove',e=>{if(e.touches.length===1)mv(e.touches[0].clientX,e.touches[0].clientY);
-  else if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pin)dist=Math.max(3,Math.min(22,dist*(pin/d)));pin=d;}},{passive:true});
+  else if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pin)dist=Math.max(2.6,Math.min(20,dist*(pin/d)));pin=d;}},{passive:true});
 el.addEventListener('touchend',()=>{drag=false;pin=0;});
 
 // ---- legend ----
 const ITEMS=[
-  {label:'Target + beam',       sub:'p / A beam',   ids:['beamline'],color:0xd8b24a},
-  {label:'RICH',                sub:'Cherenkov · e ID',ids:['rich'], color:0x6fb0c0},
-  {label:'MDC I–IV',            sub:'drift chambers',ids:['mdc1','mdc2','mdc3','mdc4'],color:0x6fae79},
-  {label:'Toroidal magnet',     sub:'6 coils',      ids:['mag'],     color:0x55639a},
-  {label:'TOF / RPC wall',      sub:'timing · trigger',ids:['tof'],  color:0xc0894a},
+  {label:'Target + START/VETO',sub:'diamonds ∓75 cm',ids:['beam'],color:0xd8b24a},
+  {label:'RICH',               sub:'Cherenkov · e ID',ids:['rich'],color:0x6fb0c0},
+  {label:'MDC I–IV',           sub:'drift chambers',ids:['mdc1','mdc2','mdc3','mdc4'],color:0x6fae79},
+  {label:'Toroidal magnet',    sub:'ILSE · 6 coils',ids:['mag'],color:0x55639a},
+  {label:'TOF / RPC wall',     sub:'META · 18–88°',ids:['meta'],color:0xc0894a},
 ];
 const legend=document.getElementById('legend');const hidden={};
 ITEMS.forEach(it=>{const row=document.createElement('div');row.className='row';
   row.innerHTML=`<span class="sw" style="background:#${it.color.toString(16).padStart(6,'0')}"></span><span class="txt"><div class="nm">${it.label}</div><div class="sub">${it.sub}</div></span>`;
-  row.addEventListener('click',()=>{const key=it.ids.join();hidden[key]=!hidden[key];row.classList.toggle('off',hidden[key]);
-    it.ids.forEach(id=>{if(parts[id])parts[id].visible=!hidden[key];});});
+  row.addEventListener('click',()=>{const kk=it.ids.join();hidden[kk]=!hidden[kk];row.classList.toggle('off',hidden[kk]);it.ids.forEach(id=>{if(parts[id])parts[id].visible=!hidden[kk];});});
   legend.appendChild(row);});
 
 // ---- buttons ----
 const btnRotate=document.getElementById('btnRotate'),btnBeam=document.getElementById('btnBeam'),btnGhost=document.getElementById('btnGhost'),btnReset=document.getElementById('btnReset');
 function setB(b,on){b.classList.toggle('active',on);}
 btnRotate.onclick=()=>{auto=!auto;setB(btnRotate,auto);};
-btnBeam.onclick=()=>{az=0;pol=Math.PI/2;dist=6.4;auto=false;setB(btnRotate,false);};
-const allMats=[richMat,coilMat,tofMat,...mdc];let ghost=false;
-btnGhost.onclick=()=>{ghost=!ghost;setB(btnGhost,ghost);allMats.forEach(m=>{m.userData.b=m.userData.b??m.opacity;m.opacity=ghost?Math.min(m.userData.b,m.userData.b*0.4+0.02):m.userData.b;m.transparent=m.opacity<1;});};
-btnReset.onclick=()=>{az=0.85;pol=1.08;dist=7.4;auto=true;setB(btnRotate,true);};
+btnBeam.onclick=()=>{az=0;pol=Math.PI/2;dist=5.4;auto=false;setB(btnRotate,false);};
+const allMats=[];det.traverse(o=>{if(o.material&&o.material.transparent&&allMats.indexOf(o.material)<0)allMats.push(o.material);});
+let ghost=false;btnGhost.onclick=()=>{ghost=!ghost;setB(btnGhost,ghost);allMats.forEach(m=>{m.userData.b=m.userData.b??m.opacity;m.opacity=ghost?Math.min(m.userData.b,m.userData.b*0.4+0.02):m.userData.b;});};
+btnReset.onclick=()=>{az=0.85;pol=1.05;dist=6.6;auto=true;setB(btnRotate,true);};
 
 let hintT=setTimeout(hideHint,4500);function hideHint(){const h=document.getElementById('hint');if(h)h.style.opacity=0;clearTimeout(hintT);}
 function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
